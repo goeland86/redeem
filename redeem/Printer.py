@@ -43,8 +43,12 @@ class Printer:
   AXIS_CONFIG_DELTA = 3
 
   def __init__(self):
+    self.config_location = None
+    self.alarms = []
     self.steppers = {}
+    self.steppers_ordered = []
     self.heaters = {}
+    self.heaters_ordered = []
     self.thermistors = {}
     self.mosfets = {}
     self.end_stops = {}
@@ -52,6 +56,7 @@ class Printer:
     self.cold_ends = []
     self.coolers = []
     self.comms = {}    # Communication channels
+    self.command_connect = {}
     self.path_planner = None
     self.speed_factor = 1.0
     self.unit_factor = 1.0
@@ -107,16 +112,29 @@ class Printer:
 
     self.sd_card_manager = SDCardManager()
 
+  def add_stepper(self, stepper):
+    self.steppers[stepper.name] = stepper
+    self.steppers_ordered.append(stepper)
+
+  def add_stepper_with_index(self, stepper, index):
+    self.steppers[stepper.name] = stepper
+    diff = index - len(self.steppers_ordered)
+    logging.debug("Index: {}".format(index))
+    logging.debug("Len: {}".format(len(self.steppers_ordered)))
+    if diff < 1:
+      self.steppers_ordered.extend([None for x in xrange(diff + 1)])
+    self.steppers_ordered[index] = stepper
+
   def add_slave(self, master, slave):
     ''' Make an axis copy the movement of another.
-    the slave will get the same position as the axis'''
+        the slave will get the same position as the axis'''
     self.slaves[master] = slave
     self.has_slaves = True
 
   def ensure_steppers_enabled(self):
     """
-    This method is called for every move, so it should be fast/cached.
-    """
+        This method is called for every move, so it should be fast/cached.
+        """
     # Reset Stepper watchdog
     self.swd.reset()
     # Enable steppers
@@ -148,9 +166,9 @@ class Printer:
 
   def homing(self, is_homing):
     """
-    if the printer is homing the endstops may need to be updated to
-    allow for endstops that are only active during the homing procedure
-    """
+        if the printer is homing the endstops may need to be updated to
+        allow for endstops that are only active during the homing procedure
+        """
 
     homing_only_endstops = self.config.get('Endstops', 'homing_only_endstops')
     if homing_only_endstops:
@@ -164,8 +182,8 @@ class Printer:
 
   def set_active_endstops(self):
     """
-    go through the list of endstops and load their active status into the PRU
-    """
+        go through the list of endstops and load their active status into the PRU
+        """
     # generate a binary representation of the active status
     active = 0
     for i, es in enumerate(["X1", "Y1", "Z1", "X2", "Y2", "Z2"]):
@@ -231,6 +249,18 @@ class Printer:
     # Only update if they are different
     if mat != self.config.get('Geometry', 'bed_compensation_matrix'):
       self.config.set('Geometry', 'bed_compensation_matrix', mat)
+
+  def resend_alarms(self):
+    """ send all alarms that are in the alarms queue """
+
+    for alarm in self.alarms:
+      alarm.execute()
+      #logging.info("Resent alarm : {}".format(alarm.message))
+
+    # clear alarms
+    self.alarms = []
+
+    return
 
   def movement_axis(self, axis):
     if self.e_axis_active and axis == "E":

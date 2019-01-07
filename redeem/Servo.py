@@ -25,7 +25,8 @@ import Queue
 import sys
 import time
 from multiprocessing import JoinableQueue
-from PWM_pin import PWM_pin
+import logging
+from PWM import PWM_PCA9685, PWM_AM335
 from ShiftRegister import ShiftRegister
 from threading import Thread
 from six import PY2
@@ -86,18 +87,19 @@ class Servo:
     # Branch based on channel type.
 
     if type(channel) == int:    # Revision A
-      self.pwm = PWM(channel, 50, self.current_pulse_width)
+      self.pwm = PWM_PCA9685(channel, 50, self.current_pulse_width)
     else:    # Revision B
       # Set up the Shift register for enabling this servo
       if channel == "P9_14":
         shiftreg_nr = 1
-        self.pwm = PWM_pin(channel, 50, self.current_pulse_width)
+        self.pwm = PWM_AM335(channel, 50, self.current_pulse_width)
       elif channel == "P9_16":
         shiftreg_nr = 2
-        self.pwm = PWM_pin(channel, 50, self.current_pulse_width)
+        self.pwm = PWM_AM335(channel, 50, self.current_pulse_width)
       else:
         logging.warning("Tried to assign servo to an unknown channel/pin: " + str(channel))
         return
+
       ShiftRegister.make(5)
       self.shift_reg = ShiftRegister.registers[shiftreg_nr]
     self.set_enabled()

@@ -29,9 +29,9 @@ from Alarm import Alarm
 
 class Heater(object):
   """
-  A heater element that must keep temperature,
-  either an extruder, a HBP or could even be a heated chamber
-  """
+    A heater element that must keep temperature,
+    either an extruder, a HBP or could even be a heated chamber
+    """
 
   def __init__(self, thermistor, mosfet, name, onoff_control):
     """ Init """
@@ -51,6 +51,7 @@ class Heater(object):
     self.prefix = ""
     self.sleep = 0.1    # Time to sleep between measurements
     self.max_power = 1.0    # Maximum power
+    self.max_tuning_power = 1.0    # Maximum power during M303
 
     self.min_temp_enabled = False    # Temperature error limit
     self.min_temp = 0    # If temperature falls below this point from the target, disable.
@@ -111,8 +112,8 @@ class Heater(object):
     return abs(mag - avg)
 
   def set_min_temp(self, min_temp):
-    """ Set the minimum temperature. If current temp goes below this, 
-        sound the alarm """
+    """ Set the minimum temperature. If current temp goes below this,
+          sound the alarm """
     self.current_min_temp = min_temp
 
   def enable_min_temp(self):
@@ -213,8 +214,8 @@ class Heater(object):
     return self.error_integral
 
   def check_temperature_error(self):
-    """ Check the temperatures, make sure they are sane. 
-    Sound the alarm if something is wrong """
+    """ Check the temperatures, make sure they are sane.
+      Sound the alarm if something is wrong """
     if len(self.temperatures) < 2:
       return
     temp_delta = self.temperatures[-1] - self.temperatures[-2]

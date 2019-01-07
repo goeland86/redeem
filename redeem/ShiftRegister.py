@@ -26,21 +26,6 @@ import logging
 
 spi = None
 
-try:
-  import spidev as SPI
-  spi = SPI.SpiDev()
-  spi.open(2, 1)
-except ImportError:
-  # Load SPI module
-  try:
-    from Adafruit_BBIO.SPI import SPI
-    spi = SPI(1, 1)
-    spi.bpw = 8
-    spi.mode = 0
-  except ImportError:
-    logging.warning("Unable to set up SPI")
-    spi = None
-
 
 class ShiftRegister(object):
 
@@ -48,7 +33,7 @@ class ShiftRegister(object):
 
   @staticmethod
   def commit():
-    """ Send the values to the serial-to-parallel chips """
+    """ Send the values to the serial to parallel chips """
     bytes = []
     for reg in ShiftRegister.registers:
       bytes.append(reg.state)
@@ -57,11 +42,27 @@ class ShiftRegister(object):
 
   @staticmethod
   def make(num):
+
+    try:
+      import spidev as SPI
+      spi = SPI.SpiDev()
+      spi.open(1, 1)
+    except ImportError:
+      # Load SPI module
+      try:
+        from Adafruit_BBIO.SPI import SPI
+        spi = SPI(1, 1)
+        spi.bpw = 8
+        spi.mode = 0
+      except ImportError:
+        logging.warning("Unable to set up SPI")
+        spi = None
+
     if len(ShiftRegister.registers) == 0:
       for i in range(num):
         ShiftRegister()
 
-  def __init__(self):
+  def __init__(self, bus=1, channel=1):
     """ Init """
     ShiftRegister.registers.append(self)    # Add to list of steppers
     self.state = 0x00

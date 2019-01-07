@@ -25,8 +25,8 @@ import time
 import logging
 from Printer import Printer
 from DAC import DAC, PWM_DAC
-from ShiftRegister import ShiftRegister
-import Adafruit_BBIO.GPIO as GPIO
+#from ShiftRegister import ShiftRegister
+#import Adafruit_BBIO.GPIO as GPIO
 from threading import Thread
 from Alarm import Alarm
 from Key_pin import Key_pin
@@ -54,8 +54,9 @@ class Stepper(object):
     self.current_disabled = False
 
     # Set up the Shift register
-    ShiftRegister.make(8)
-    self.shift_reg = ShiftRegister.registers[shiftreg_nr]
+    if shiftreg_nr >= 0:
+      ShiftRegister.make(8)
+      self.shift_reg = ShiftRegister.registers[shiftreg_nr]
 
     # Set up the GPIO pins - we just have to initialize them so the PRU can flip them
     # terrible hack to cover a bug in Adafruit
@@ -108,9 +109,12 @@ class Stepper(object):
   def get_direction(self):
     return self.direction
 
-  @staticmethod
-  def commit():
-    pass
+    def get_capabilities(self):
+      return "Not implemented for {}\n".format(self.name)
+
+    @staticmethod
+    def commit():
+      pass
 
   def fault_callback(self, key, event):
     Alarm(Alarm.STEPPER_FAULT,
@@ -265,18 +269,22 @@ class Stepper_00B2(Stepper_00B1):
       ShiftRegister.registers[4].add_state(0x1)
     self.enabled = False
 
-  def set_enabled(self, force_update=False):
-    if self.enabled:
-      return
-    logging.debug("Enabling stepper " + self.name)
-    # X, Y, Z steppers are on the first shift reg. Extruders have their own.
-    if self.name in ["X", "Y", "Z"]:
-      ShiftRegister.registers[0].remove_state(0x1)    # First bit low.
-    elif self.name == "E":
-      ShiftRegister.registers[3].remove_state(0x1)
-    elif self.name == "H":
-      ShiftRegister.registers[4].remove_state(0x1)
-    self.enabled = True
+    def set_enabled(self, force_update=False):
+      if self.enabled:
+        return
+      logging.debug("Enabling stepper " + self.name)
+      # X, Y, Z steppers are on the first shift reg. Extruders have their own.
+      if self.name in ["X", "Y", "Z"]:
+        ShiftRegister.registers[0].remove_state(0x1)    # First bit low.
+      elif self.name == "E":
+        ShiftRegister.registers[3].remove_state(0x1)
+      elif self.name == "H":
+        ShiftRegister.registers[4].remove_state(0x1)
+      self.enabled = True
+
+    def reset(self):
+      self.set_disabled()
+      self.set_enabled()
 
 
 class Stepper_00B3(Stepper_00B2):
@@ -331,11 +339,17 @@ class Stepper_00B3(Stepper_00B2):
     self.current_enabled = False
     self.set_current_value(0)
 
-  def set_current_enabled(self):
-    if self.current_enabled:
-      return
-    self.set_current_value(self.current_enable_value)
-    self.current_enabled = True
+    def set_current_enabled(self):
+      if self.current_enabled:
+        return
+      self.set_current_value(self.current_enable_value)
+      self.current_enabled = True
+
+    def reset(self):
+      self.set_disabled()
+      self.set_current_disabled()
+      self.set_enabled()
+      self.set_current_enabled()
 
 
 """

@@ -74,4 +74,5 @@ pt100 = [
 """ Configuration for thermocouple boards having linear v/deg scale"""
 tboard = [
     ["Tboard", 0.005],
+    ["Tboard2", 0.0025],
 ]

@@ -13,32 +13,31 @@ from .GCodeCommand import GCodeCommand
 
 class M106(GCodeCommand):
   def execute(self, gcode):
-    fans = []
-    if gcode.has_letter("P"):
-      fan_no = gcode.get_int_by_letter("P", 0)
-      if fan_no < len(self.printer.fans):
-        fans.append(self.printer.fans[fan_no])
-    else:    # No P in gcode, use fans from settings file
-      fans = self.printer.controlled_fans
-
     # Get the value, 255 if not present
     value = float(gcode.get_float_by_letter("S", 255)) / 255.0
 
-    for fan in fans:
-      if gcode.has_letter("R"):    # Ramp to value
-        delay = gcode.get_float_by_letter("R", 0.01)
-        fan.ramp_to(value, delay)
-      else:
-        fan.set_value(value)
+    fan_controller = None
+    if gcode.has_letter("P"):
+      fan_no = gcode.get_int_by_letter("P", 0)
+      if fan_no < len(self.printer.fans):
+        fan_controller = self.printer.fans[fan_no].input
+    else:
+      fan_controller = self.printer.command_connect["M106"]
+
+    if gcode.has_letter("R"):    # Ramp to value
+      delay = gcode.get_float_by_letter("R", 0.01)
+      fan_controller.ramp_to(value, delay)
+    else:
+      fan_controller.set_target_value(value)
 
   def get_description(self):
     return "Set fan power."
 
   def get_long_description(self):
     return "Set the current fan power. Specify S parameter for the " \
-           "power (between 0 and 255) and the P parameter for the fan " \
-           "number. P=0 and S=255 by default. If no P, use fan from config. "\
-           "If no fan configured, use fan 0. If 'R' is present, ramp to the value"
+       "power (between 0 and 255) and the P parameter for the fan " \
+       "number. P=0 and S=255 by default. If no P, use fan from config. "\
+       "If no fan configured, use fan 0. If 'R' is present, ramp to the value"
 
   def is_buffered(self):
     return True
@@ -46,24 +45,23 @@ class M106(GCodeCommand):
 
 class M107(GCodeCommand):
   def execute(self, gcode):
-    fans = []
+    fan_controller = None
     if gcode.has_letter("P"):
       fan_no = gcode.get_int_by_letter("P", 0)
       if fan_no < len(self.printer.fans):
-        fans.append(self.printer.fans[fan_no])
-    else:    # No P in gcode, use fans from settings file
-      fans = self.printer.controlled_fans
+        fan_controller = self.printer.fans[fan_no].input
+    else:
+      fan_controller = self.printer.command_connect["M107"]
 
-    for fan in fans:
-      fan.set_value(0)
+    fan_controller.set_target_value(0.0)
 
   def get_description(self):
     return "set fan off"
 
   def get_long_description(self):
     return "Set the current fan off. Specify P parameter for the fan " \
-           "number. If no P, use fan from config. "\
-           "If no fan configured, use fan 0"
+       "number. If no P, use fan from config. "\
+       "If no fan configured, use fan 0"
 
   def is_buffered(self):
     return True

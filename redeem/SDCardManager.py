@@ -10,6 +10,14 @@ def blocks(files, size=65536):
     yield b
 
 
+def blocks(files, size=65536):
+  while True:
+    b = files.read(size)
+    if not b:
+      break
+    yield b
+
+
 class SDCardManager(object):
   file_name = None
   gcode_file = None

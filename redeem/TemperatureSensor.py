@@ -41,44 +41,45 @@ class TemperatureSensor:
 
   mutex = Lock()
 
-  def __init__(self, pin, heater_name, sensorIdentifier):
 
-    self.pin = pin
-    self.heater = heater_name
-    self.sensorIdentifier = sensorIdentifier
-    self.maxAdc = 4095.0
+def __init__(self, pin, name, sensorIdentifier):
 
-    #Find matching entry in sensor tables and instantiate corresponding sensor
-    found = False
-    for s in TemperatureSensorConfigs.thermistors_shh:
-      if s[0] == self.sensorIdentifier:
-        self.sensor = Thermistor(pin, s, self.heater)
+  self.pin = pin
+  self.name = name
+  self.sensorIdentifier = sensorIdentifier
+  self.maxAdc = 4095.0
+
+  #Find matching entry in sensor tables and instantiate corresponding sensor
+  found = False
+  for s in TemperatureSensorConfigs.thermistors_shh:
+    if s[0] == self.sensorIdentifier:
+      self.sensor = Thermistor(pin, s, self.name)
+      found = True
+      break
+
+  if found == False:
+    for p in TemperatureSensorConfigs.pt100:
+      if p[0] == self.sensorIdentifier:
+        logging.warning("PT100 temperature sensor support is experimental at this stage.")
+        """ Experimental solution """
+        self.sensor = PT100(pin, p, self.name)
         found = True
         break
 
-    if found == False:
-      for p in TemperatureSensorConfigs.pt100:
-        if p[0] == self.sensorIdentifier:
-          logging.warning("PT100 temperature sensor support is experimental at this stage.")
-          """ Experimental solution """
-          self.sensor = PT100(pin, p, self.heater)
-          found = True
-          break
+  if found == False:
+    for p in TemperatureSensorConfigs.tboard:
+      if p[0] == self.sensorIdentifier:
+        logging.warning("Tboard sensors are experimental")
+        """ Not working yet. No known hardware solution """
+        self.sensor = Tboard(pin, p, self.name)
+        found = True
+        break
 
-    if found == False:
-      for p in TemperatureSensorConfigs.tboard:
-        if p[0] == self.sensorIdentifier:
-          logging.warning("Tboard sensors are experimental")
-          """ Not working yet. No known hardware solution """
-          self.sensor = Tboard(pin, p, self.heater)
-          found = True
-          break
-
-    if found == False:
-      logging.error("The specified temperature sensor {0} is not implemented. \
-            You may add it's config in TemperatureSensorConfigs.".format(sensorIdentifier))
-      self.sensor = None
-
+  if found == False:
+    logging.error(
+        "The specified temperature sensor {0} is not implemented. You may add it's config in TemperatureSensorConfigs.".
+        format(sensorIdentifier))
+    self.sensor = None
   """
     Returns the current temperature in degrees celsius for the given sensor.
     """
@@ -88,6 +89,9 @@ class TemperatureSensor:
     if not self.sensor:
       return 0.0
     return self.sensor.get_temperature(voltage)
+
+  def get_value(self):
+    return self.get_temperature()
 
   """
     Reads the adc pin and returns the actual voltage value
@@ -111,6 +115,9 @@ class TemperatureSensor:
 
     TemperatureSensor.mutex.release()
     return voltage
+
+  def __str__(self):
+    return self.name
 
 
 """ This class represents standard thermistor sensors.
@@ -140,21 +147,21 @@ class Thermistor(TemperatureSensor):
           .format(pin, sensorConfiguration[0], sensorConfiguration[1], sensorConfiguration[2],
                   sensorConfiguration[3], sensorConfiguration[4]))
 
-  def get_temperature(self, voltage):
-    """ Return the temperature in degrees celsius. Uses Steinhart-Hart """
-    r = self.voltage_to_resistance(voltage)
-    #if self.name == "MOSFET E":
-    #    logging.debug("Voltage: "+str(voltage))
-    #    logging.debug("resistance: "+str(r))
-    if r > 0:
-      l = math.log(r)
-      t = float((1.0 / (self.c1 + self.c2 * l + self.c3 * math.pow(l, 3))) - 273.15)
-    else:
-      t = -273.15
-      logging.debug(
-          "Reading sensor {0} on {1}, but it seems to be out of bounds. R is {2}. Setting temp to {3}."
-          .format(self.sensorIdentifier, self.pin, r, t))
-    return max(t, 0.0)    # Cap it at 0
+    def get_temperature(self, voltage):
+      """ Return the temperature in degrees celsius. Uses Steinhart-Hart """
+      r = self.voltage_to_resistance(voltage)
+      #if self.name == "MOSFET E":
+      #logging.debug("Voltage: "+str(voltage))
+      #logging.debug("resistance: "+str(r))
+      if r > 0:
+        l = math.log(r)
+        t = float((1.0 / (self.c1 + self.c2 * l + self.c3 * math.pow(l, 3))) - 273.15)
+      else:
+        t = -273.15
+        logging.debug(
+            "Reading sensor {0} on {1}, but it seems to be out of bounds. R is {2}. Setting temp to {3}.".
+            format(self.sensorIdentifier, self.pin, r, t))
+      return max(t, 0.0)    # Cap it at 0
 
   def voltage_to_resistance(self, voltage):
     """ Convert the voltage to a resistance value """

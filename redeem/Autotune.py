@@ -87,7 +87,7 @@ class Autotune:
 
     # Set the standard parameters
     self.d = self.bias = 0.5
-    self.heater.max_power = 1.0
+    self.heater.max_tuning_power = self.heater.max_power
 
     # Pre calibrate
     if self.pre_calibrate_enabled:
@@ -156,31 +156,31 @@ class Autotune:
           self.Ku = (4.0 * self.d) / (np.pi * np.sqrt(a**2 + self.E**2))
           self.Pu = self.t_low + self.t_high
 
-          # Tyreus-Luyben:
-          if self.tuning_algorithm == "TL":
-            self.Kp = 0.45 * self.Ku
-            self.Ti = 2.2 * self.Pu
-            self.Td = self.Pu / 6.3
+        # Tyreus-Luyben:
+        if self.tuning_algorithm == "TL":
+          self.Kp = 0.45 * self.Ku
+          self.Ti = 2.2 * self.Pu
+          self.Td = self.Pu / 6.3
 
-          # Classic Zieger-Nichols
-          elif self.tuning_algorithm == "ZN":
-            self.Kp = 0.6 * self.Ku
-            self.Ti = self.Pu / 2.0
-            self.Td = self.Pu / 8.0
+        # Classic Zieger-Nichols
+        elif self.tuning_algorithm == "ZN":
+          self.Kp = 0.6 * self.Ku
+          self.Ti = self.Pu / 2.0
+          self.Td = self.Pu / 8.0
 
-          print("Temperature diff: " + str(a) + " deg. C")
-          print("Oscillation period: " + str(self.Pu) + " seconds")
-          print("Ultimate gain: " + str(self.Ku))
-          print("Kp: " + str(self.Kp))
-          print("Ti: " + str(self.Ti))
-          print("Td: " + str(self.Td))
+        print("Temperature diff: " + str(a) + " deg. C")
+        print("Oscillation period: " + str(self.Pu) + " seconds")
+        print("Ultimate gain: " + str(self.Ku))
+        print("Kp: " + str(self.Kp))
+        print("Ti: " + str(self.Ti))
+        print("Td: " + str(self.Td))
 
-      self.heater.max_power = self.bias + self.d
-      logging.debug("Power set to " + str(self.heater.max_power))
+        self.heater.max_tuning_power = self.bias + self.d
+        logging.debug("Power set to " + str(self.heater.max_tuning_power))
 
-    logging.debug("Cycles completed")
-    self.heater.set_target_temperature(0)
-    self.heater.max_power = 1.0
+        logging.debug("Cycles completed")
+        self.heater.set_target_temperature(0)
+        self.heater.max_tuning_power = 1.0
 
   def _pre_calibrate(self):
     logging.debug("Starting pre-calibrate")
@@ -198,7 +198,7 @@ class Autotune:
 
     current_temp = self.heater.get_temperature()
     # Set the heater at 25% max power
-    self.heater.max_power = 0.25
+    self.heater.max_tuning_power = 0.25
 
     heatup_temps = []
 
@@ -250,7 +250,7 @@ class Autotune:
 
     # (9) Raise temp until cutoff.
     cutoff_temp = self.pre_calibrate_temp - self.cutoff_band
-    self.heater.max_power = 1.0
+    self.heater.max_tuning_power = 1.0
     cutoff_temps = []
     cutoff_times = []
     logging.debug("Cutoff temp: " + str(cutoff_temp) + " deg")
@@ -259,14 +259,14 @@ class Autotune:
       cutoff_times.append(time.time())
       time.sleep(0.1)
 
-    # (10) Calculate slope in degrees/second, store as setpoint_heating_rate
-    self.setpoint_heating_rate = (cutoff_temps[-1] - cutoff_temps[-20]) / (
-        cutoff_times[-1] - cutoff_times[-20])
-    logging.debug("Found setpoint heating rate: " + str(self.setpoint_heating_rate))
+      # (10) Calculate slope in degrees/second, store as setpoint_heating_rate
+      self.setpoint_heating_rate = (cutoff_temps[-1] - cutoff_temps[-20]) / (
+          cutoff_times[-1] - cutoff_times[-20])
+      logging.debug("Found setpoint heating rate: " + str(self.setpoint_heating_rate))
 
-    if self.setpoint_heating_rate > self.max_heat_rate:
-      self.max_heat_rate = self.setpoint_heating_rate
-      logging.debug("Updated max heat rate to: " + str(self.setpoint_heating_rate))
+      if self.setpoint_heating_rate > self.max_heat_rate:
+        self.max_heat_rate = self.setpoint_heating_rate
+        logging.debug("Updated max heat rate to: " + str(self.setpoint_heating_rate))
 
     # (11) Set power to zero
     self.heater.set_target_temperature(0)
@@ -353,7 +353,7 @@ class Autotune:
     # Apply max heater power until reaching temp=setpoint - cutoff_band
 
     cutoff_temp = self.steady_temperature - self.cutoff_band
-    self.heater.max_power = 1.0
+    self.heater.max_tuning_power = 1.0
     self.heater.set_target_temperature(self.steady_temperature)
     logging.debug("Cutoff temp: " + str(cutoff_temp) + " deg")
     while self.heater.get_temperature_raw() < cutoff_temp:
@@ -372,7 +372,7 @@ class Autotune:
     logging.debug("Found max peak: " + str(highest_temp) + " deg")
 
     # (6) Apply setpoint_power heater power and hold until stable
-    self.heater.max_power = self.setpoint_power
+    self.heater.max_tuning_power = self.setpoint_power
     # Set temp to something above the desired. setpoint power should enforce this.
     #self.heater.set_target_temperature(230)
     #while self.heater.get_noise_magnitude(300) > 1.0:
@@ -380,7 +380,7 @@ class Autotune:
 
     #logging.debug("Stable temp reached")
 
-    self.heater.max_power = self.high_cycle_power
+    self.heater.max_tuning_power = self.high_cycle_power
 
     logging.debug("Pre calibrate done")
 

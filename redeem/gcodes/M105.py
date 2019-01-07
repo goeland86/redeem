@@ -10,6 +10,7 @@ from __future__ import absolute_import
 
 import math
 from six import iteritems
+import logging
 from .GCodeCommand import GCodeCommand
 
 
@@ -17,30 +18,32 @@ class M105(GCodeCommand):
   def execute(self, g):
     def format_temperature(heater, prefix):
       """
-      Returns <prefix>:<heater temperature> for a given heater and
-      prefix. Temperature values are formatted as integers.
-      """
-      temperature = self.printer.heaters[heater].get_temperature()
+            Returns <prefix>:<heater temperature> for a given heater and
+            prefix. Temperature values are formatted as integers.
+            """
+      temp = self.printer.heaters[heater].get_temperature()
       target = self.printer.heaters[heater].get_target_temperature()
-      return "{0}:{1:.1f}/{2:.1f}".format(prefix, temperature, target)
+      return "{0}:{1:.1f}/{2:.1f}".format(prefix, temp, target)
 
-    # Cura expects the temperature from the first
-    current_tool = self.printer.current_tool
-    answer = "ok " + format_temperature(current_tool, "T")
+      # Cura expects the temperature from the first
+      current_tool = self.printer.current_tool
+      answer = "ok " + format_temperature(current_tool, "T")
 
-    # Append heaters
-    for heater, data in sorted(iteritems(self.printer.heaters), key=lambda (k, v): (v, k)):
-      answer += " " + format_temperature(heater, data.prefix)
+      # Append heaters
+      for heater, data in sorted(iteritems(self.printer.heaters), key=lambda (k, v): (v, k)):
+        answer += " " + format_temperature(heater, data.prefix)
 
-    # Append the current tool power if using PID
-    if not self.printer.heaters[current_tool].onoff_control:
-      answer += " @:" + str(math.floor(255 * self.printer.heaters[current_tool].mosfet.get_power()))
+        # Append the current tool power
+        current_power = math.floor(255 * self.printer.heaters[current_tool].mosfet.get_power())
+        if current_power > 0.0:
+          answer += " @:" + str(current_power)
 
-    for c, cooler in enumerate(self.printer.cold_ends):
-      temp = cooler.get_temperature()
-      answer += " C{0}:{1:.0f}".format(c, temp)
+          for c, cooler in enumerate(self.printer.cold_ends):
+            temp = cooler.get_temperature()
+            answer += " C{0}:{1:.0f}".format(c, temp)
 
-    g.set_answer(answer)
+          #logging.info(answer)
+          g.set_answer(answer)
 
   def get_description(self):
     return "Get extruder temperature"

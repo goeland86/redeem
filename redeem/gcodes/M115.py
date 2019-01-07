@@ -20,7 +20,7 @@ class M115(GCodeCommand):
     protocol_version = 0.1
     replicape_key = self.printer.config.replicape_key
     firmware_name = "Redeem"
-    firmware_version = __long_version__
+    firmware_version = self.printer.firmware_version
     firmware_url = __url__
     machine_type = self.printer.config.get('System', 'machine_type')
     extruder_count = self.printer.NUM_EXTRUDERS
@@ -33,17 +33,17 @@ class M115(GCodeCommand):
     distro_version = l[1]
     g.set_answer(
         "ok " \
-        "PROTOCOL_VERSION:{} "\
-        "FIRMWARE_NAME:{} "\
-        "FIRMWARE_VERSION:{} "\
-        "REPLICAPE_KEY:{} "\
-        "FIRMWARE_URL:{} "\
-        "MACHINE_TYPE:{} "\
-        "KERNEL:{} "\
-        "DISTRIBUTION_NAME:{} "\
-        "DISTRIBUTION_VERSION:{} "\
-        "EXTRUDER_COUNT:{}"\
-        .format(
+        "PROTOCOL_VERSION:{} " \
+        "FIRMWARE_NAME:{} " \
+        "FIRMWARE_VERSION:{} " \
+        "REPLICAPE_KEY:{} " \
+        "FIRMWARE_URL:{} " \
+        "MACHINE_TYPE:{} " \
+        "KERNEL:{} " \
+        "DISTRIBUTION_NAME:{} " \
+        "DISTRIBUTION_VERSION:{} " \
+        "EXTRUDER_COUNT:{}" \
+            .format(
             protocol_version,
             firmware_name,
             firmware_version,
@@ -56,6 +56,8 @@ class M115(GCodeCommand):
             extruder_count
         )
     )
+
+    self.printer.resend_alarms()
 
   def get_description(self):
     return "Get Firmware Version and Capabilities"
